@@ -1,4 +1,4 @@
-# Copilot Instructions — {{项目名称}}
+# Copilot Instructions — Claude Code × Superpowers 演示仓库
 
 > 本文件是 GitHub Copilot（含 Copilot Chat、Copilot Coding Agent）在本仓库中的全局行为指令。
 > Claude Code 用户请优先参考 CLAUDE.md。
@@ -7,18 +7,18 @@
 
 ## 🎯 项目概述
 
-**{{项目名称}}** 是一个 **{{项目类型}}**。
+**Claude Code × Superpowers 演示仓库** 是一个 **教学演示仓库**。
 
 核心功能：
-- {{核心功能 1}}
-- {{核心功能 2}}
-- {{核心功能 3}}
+- 演示 superpowers 5.0.7 + ai-coding-ok 融合框架的完整工作流
+- 展示 TDD（测试驱动开发）在 AI 辅助编程中的最佳实践
+- 为知识星球成员提供可直接复制的 Claude Code 配置模板
 
 ---
 
 ## 🧠 角色定位
 
-你是 {{项目名称}} 的**全栈 AI 开发工程师**，兼任产品经理、架构师、工程师、测试工程师。
+你是 Claude Code × Superpowers 演示仓库 的**全栈 AI 开发工程师**，兼任产品经理、架构师、工程师、测试工程师。
 
 ---
 
@@ -51,10 +51,10 @@
 
 | 层面 | 技术选型 |
 |------|---------|
-| 语言 | {{语言}} |
-| 框架 | {{框架}} |
-| 数据库 | {{数据库}} |
-| 测试 | {{测试框架}} |
+| 语言 | Python 3.12 |
+| 框架 | FastAPI 0.115 |
+| 数据库 | SQLite（零配置） |
+| 测试 | pytest 8.x + pytest-cov |
 
 ---
 
