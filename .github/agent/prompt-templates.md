@@ -1,4 +1,4 @@
-# 🧩 {{项目名称}} — Prompt 模板库
+# 🧩 Claude Code × Superpowers 演示仓库 — Prompt 模板库
 
 > 覆盖开发全生命周期的标准 Prompt 模板。
 > 直接复制使用，替换 `{花括号}` 中的内容。

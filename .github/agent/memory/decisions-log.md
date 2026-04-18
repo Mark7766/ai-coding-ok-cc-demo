@@ -1,4 +1,4 @@
-# 📝 {{项目名称}} — 技术决策日志 (ADR)
+# 📝 Claude Code × Superpowers 演示仓库 — 技术决策日志 (ADR)
 
 > **用途**：记录项目中每个重要技术决策，使决策可追溯、可理解。
 > 格式参考 [Architecture Decision Records](https://adr.github.io/)。
@@ -41,7 +41,7 @@
 
 ### ADR-001: 项目框架初始化
 
-- **日期**：{{初始化日期}}
+- **日期**：2026-04-18
 - **状态**：✅ 已采纳
 - **决策者**：Mark（项目所有者）
 
@@ -69,3 +69,36 @@
 - CLAUDE.md 作为融合入口，统一两套框架的优先级
 - 每次任务结束必须更新记忆文件（task-history.md）
 - 设计文档存入 docs/superpowers/specs/，计划存入 docs/superpowers/plans/
+
+---
+
+### ADR-002: 演示技术栈选型
+
+- **日期**：2026-04-18
+- **状态**：✅ 已采纳
+- **决策者**：Mark + Claude Code Agent
+
+#### 背景
+演示仓库需要选择一套技术栈，既能展示 TDD 最佳实践，又要足够简单让知识星球成员快速上手。
+
+#### 方案对比
+
+| 方案 | 优点 | 缺点 |
+|------|------|------|
+| Python + FastAPI + SQLite | 轻量、零配置、自带 OpenAPI 文档 | 不适合高并发生产环境 |
+| Python + Django + PostgreSQL | 功能完整、生态丰富 | 配置复杂，不适合演示 |
+| Node.js + Express + SQLite | 前端友好 | 异步模型较复杂，不适合展示 TDD |
+
+#### 决策
+选择 **Python 3.12 + FastAPI + SQLite + pytest**。
+
+#### 理由
+- SQLite 零配置，`git clone` 后直接运行，降低演示门槛
+- FastAPI 语法简洁，自动生成 OpenAPI 文档，直观展示 API 设计
+- pytest 生态成熟，与 TDD 工作流配合最佳
+- Python 是知识星球成员最熟悉的语言
+
+#### 影响
+- 所有示例代码使用 Python 3.12 语法（含 `match` 语句、类型注解等新特性）
+- 测试使用 `pytest` + `pytest-cov`，覆盖率目标 ≥ 80%
+- 禁止引入 Django ORM、Celery 等重量级依赖
