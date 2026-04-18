@@ -99,6 +99,39 @@
 - Python 是知识星球成员最熟悉的语言
 
 #### 影响
-- 所有示例代码使用 Python 3.12 语法（含 `match` 语句、类型注解等新特性）
+- 所有示例代码使用 Python 3.11 语法（宿主机实际版本）
 - 测试使用 `pytest` + `pytest-cov`，覆盖率目标 ≥ 80%
 - 禁止引入 Django ORM、Celery 等重量级依赖
+
+---
+
+### ADR-003: SQLite 测试隔离方案
+
+- **日期**：2026-04-18
+- **状态**：✅ 已采纳
+- **决策者**：Claude Code Agent
+
+#### 背景
+需要让 API 集成测试使用独立的 in-memory 数据库，避免测试污染生产数据，
+同时 FastAPI 的 sync 路由会在线程池中运行，导致 SQLite 连接跨线程报错。
+
+#### 方案对比
+
+| 方案 | 优点 | 缺点 |
+|------|------|------|
+| 每个测试创建临时文件 DB | 真实文件行为 | 慢、需清理 |
+| `:memory:` + `dependency_overrides` | 快、完全隔离 | 需处理跨线程问题 |
+| 改用 async 路由 | 根本解决线程问题 | 增加复杂度，不适合入门演示 |
+
+#### 决策
+使用 **`:memory:` SQLite + `app.dependency_overrides` + `check_same_thread=False`**。
+
+#### 理由
+- in-memory DB 每个 fixture 独立，测试完全隔离，速度最快
+- `check_same_thread=False` 允许同一连接在不同线程使用，适合演示场景
+- `dependency_overrides` 是 FastAPI 官方推荐的测试注入方式，值得在演示中展示
+
+#### 影响
+- `src/database.py` 的 `create_connection()` 统一加 `check_same_thread=False`
+- `tests/conftest.py` 中 `db` fixture 使用 `sqlite3.connect(":memory:", check_same_thread=False)`
+- 生产环境如需高并发，应改用连接池方案（非本演示范围）
