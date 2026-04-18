@@ -1,0 +1,70 @@
+name: 🧠 Memory Update Check
+
+# 当核心代码变更时，自动检查是否同步更新了记忆文件
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "src/**"
+      - "app/**"
+      - "lib/**"
+      - "pyproject.toml"
+      - "package.json"
+
+jobs:
+  memory-check:
+    name: "检查记忆文件是否同步更新"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 检测变更文件
+        id: memory
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+          echo "=== 本次变更文件 ==="
+          echo "$CHANGED"
+
+          CORE_CHANGES=false
+          if echo "$CHANGED" | grep -qE '^(src/|app/|lib/)'; then
+            CORE_CHANGES=true
+          fi
+
+          MEMORY_UPDATED=false
+          if echo "$CHANGED" | grep -qE '\.github/agent/memory/'; then
+            MEMORY_UPDATED=true
+          fi
+
+          echo "core_changes=$CORE_CHANGES" >> $GITHUB_OUTPUT
+          echo "memory_updated=$MEMORY_UPDATED" >> $GITHUB_OUTPUT
+
+      - name: 提醒更新记忆文件
+        if: steps.memory.outputs.core_changes == 'true' && steps.memory.outputs.memory_updated == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🧠 记忆文件更新提醒
+
+            本次 PR 包含核心代码变更，但**未更新项目记忆文件**。
+
+            AI Agent 依赖这些文件了解项目上下文，请检查是否需要更新：
+
+            | 文件 | 更新时机 |
+            |------|---------|
+            | \`.github/agent/memory/task-history.md\` | **每次任务都要更新** |
+            | \`.github/agent/memory/decisions-log.md\` | 有新的技术决策时 |
+            | \`.github/agent/memory/project-memory.md\` | 架构或核心事实变更时 |
+
+            > 如果本次变更不涉及架构变更和重大决策，至少需要更新 task-history.md。`,
+            });
+
+      - name: 记忆文件已更新
+        if: steps.memory.outputs.memory_updated == 'true'
+        run: echo "✅ 记忆文件已在本 PR 中更新"
