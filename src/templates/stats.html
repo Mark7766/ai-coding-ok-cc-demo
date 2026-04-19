@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}统计 — {{ stats.year }}年{{ stats.month }}月{% endblock %}
+
+{% block nav %}
+  <a href="/">🏠 首页</a>
+  <a href="/dashboard">📊 看板</a>
+{% endblock %}
+
+{% block content %}
+<!-- Month navigation -->
+<div class="date-nav">
+  <a class="nav-btn" href="/stats?year={{ prev_year }}&month={{ prev_month }}">‹ 上月</a>
+  <span class="date-label">{{ stats.year }}年{{ stats.month }}月</span>
+  <a class="nav-btn" href="/stats?year={{ next_year }}&month={{ next_month }}">下月 ›</a>
+</div>
+
+<!-- Monthly total -->
+<div class="card">
+  <div class="card-title">本月合计</div>
+  <div class="month-total-big">¥{{ "%.2f" | format(stats.total) }}</div>
+  <div style="text-align:center; color:var(--muted); font-size:.82rem; padding-bottom:6px">
+    共 {{ stats.by_day | length }} 天有支出
+  </div>
+</div>
+
+<!-- Category breakdown -->
+{% if stats.by_category %}
+<div class="card">
+  <div class="card-title">分类统计</div>
+  {% for cat in stats.by_category %}
+  <div class="stat-row">
+    <span class="stat-emoji">{{ cat.emoji }}</span>
+    <div class="stat-info">
+      <div class="stat-name">
+        <span>{{ cat.category }}</span>
+        <span>¥{{ "%.2f" | format(cat.total) }}</span>
+      </div>
+      <div class="stat-bar-wrap">
+        <div class="stat-bar-fill" style="width:{{ cat.pct }}%; background:{{ cat.color }}"></div>
+      </div>
+    </div>
+    <span class="stat-pct">{{ cat.pct }}%</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Daily breakdown -->
+{% if stats.by_day %}
+<div class="card">
+  <div class="card-title">每日明细</div>
+  {% for day in stats.by_day %}
+  <div class="day-row">
+    <a href="/?date={{ day.date }}">
+      {{ day.date.strftime("%-m月%-d日") }}
+    </a>
+    <span class="day-count">{{ day.count }} 笔</span>
+    <span style="font-weight:600">¥{{ "%.2f" | format(day.total) }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state">本月暂无支出记录 📭</div>
+</div>
+{% endif %}
+{% endblock %}

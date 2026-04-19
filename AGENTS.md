@@ -1,133 +1,71 @@
-# AGENTS.md — Claude Code × Superpowers 演示仓库
-
-> AI Agent 在每次任务开始时首先读取本文件。
-> 这是项目的「作战地图」，告诉 Agent 系统在哪里、怎么运转、怎么操作。
-
----
+# AGENTS.md — 记账本
 
 ## 项目概述
 
-**Claude Code × Superpowers 演示仓库** 是一个 **教学演示仓库 — 展示 superpowers + ai-coding-ok 在 Claude Code 中的最佳实践**。
-面向知识星球成员，解决 AI 跨会话失忆 + 缺乏工程纪律两大痛点，演示如何让 Claude Code 像资深工程师一样持续稳定地工作。
+记账本 是一个 **个人记账小工具，供单用户记录和查看每日消费明细**。供个人用户记录每日消费，支持分类与历史查询。
 
-**设计原则：** 极简实用，步骤可复制，便于成员理解并迁移到自己的项目
-
----
-
-## 系统架构
+## 系统架构与数据流
 
 ```
-  演示用户（知识星球成员）
-         │
-         ▼
-  FastAPI 服务 (src/main.py)
-         │
-  ┌──────┴──────────────────┐
-  │    业务逻辑层            │
-  │    src/services/        │
-  └──────┬──────────────────┘
-         │
-  ┌──────┴──────────────────┐
-  │    数据存储层            │
-  │    SQLite (demo.db)     │
-  └─────────────────────────┘
+用户浏览器 ──▶ FastAPI Web 服务器 ──▶ SQLite 数据库（本地文件）
+             (Jinja2 模板渲染)
 ```
 
-### 核心模块说明
-
-| 模块/目录 | 职责 | 状态 |
-|---------|------|------|
-| `src/main.py` | FastAPI 应用入口 | ⬜ 待开发 |
-| `src/models/` | 数据模型定义 | ⬜ 待开发 |
-| `src/services/` | 业务逻辑层 | ⬜ 待开发 |
-| `src/api/` | API 路由层 | ⬜ 待开发 |
-| `tests/` | 自动化测试 | ⬜ 待开发 |
-
----
+- **`src/main.py`** — FastAPI 应用入口，负责路由注册与应用启动
+- **`src/models/expense.py`** — 支出数据模型（Expense ORM）
+- **`src/services/expense_service.py`** — 业务逻辑层，封装记录、查询、统计操作
 
 ## 常用命令
 
 ```bash
-# 安装依赖
-pip install -e ".[dev]"
+# 安装 & 运行
+uv sync
+uv run uvicorn src.main:app --reload
 
-# 启动开发服务
-uvicorn src.main:app --reload
+# 测试
+uv run pytest
+uv run pytest --cov=src --cov-report=term-missing
 
-# 运行测试
-pytest -v
+# 代码检查 & 格式化
+uv run ruff check .
+uv run ruff format .
 
-# 查看测试覆盖率
-pytest --cov=src --cov-report=term-missing
-
-# 代码检查
-ruff check src/ tests/
-
-# 代码格式化
-ruff format src/ tests/
-
-# 数据库迁移（如适用）
-# SQLite 演示项目无需迁移，直接建表
+# 构建 / 部署
+uv run uvicorn src.main:app --host 0.0.0.0 --port 8000
 ```
 
----
+## 约定与模式
 
-## 代码约定
-
-- **类型注解**：所有函数必须有完整类型注解，文件开头加 `from __future__ import annotations`
-- **异步优先**：API 层使用 `async def`，IO 操作使用异步
-- **日志规范**：使用 `logging.getLogger(__name__)`，禁止 `print()`
-- **环境变量**：通过 `.env` 文件管理，禁止硬编码敏感信息
-- **代码限制**：单函数 ≤ 50 行，单文件 ≤ 500 行，行宽 ≤ 120 字符
-
----
+- **所有文件** 开头必须有 `from __future__ import annotations`。
+- **异步优先**：数据库操作使用异步 session，API 使用 `async def`。
+- **测试数据库**：`conftest.py` 提供内存数据库 fixture 和测试客户端。
+- **日志**：使用 `logging.getLogger(__name__)`，禁止 `print()`。
+- **配置**：环境变量通过 `.env` 文件管理，禁止硬编码敏感信息。
 
 ## 测试模式
 
 ```python
-# 测试命名格式
-def test_<被测方法>_<场景>_<期望结果>():
-    ...
+# 测试数据初始化辅助函数
+async def _seed_test_data(db: AsyncSession) -> list[Expense]:
+    items = [
+        Expense(amount=10.5, category="餐饮", note="午饭"),
+        Expense(amount=5.0, category="交通", note="地铁"),
+    ]
+    db.add_all(items)
+    await db.flush()
+    return items
 
-# AAA 模式（必须遵守）
-def test_example():
-    # Arrange — 准备数据
-    ...
-    # Act — 执行操作
-    ...
-    # Assert — 验证结果
-    ...
-
-# 时间敏感测试
+# 时间敏感测试使用 freezegun
 from freezegun import freeze_time
 
 @freeze_time("2026-01-05 10:00:00")
-def test_time_sensitive():
+async def test_something(db_session):
     ...
 ```
 
----
-
 ## 重要约束
 
-- **禁止引入的依赖**：Django ORM、Celery 等重量级框架，演示项目保持轻量
-- **数据库迁移策略**：SQLite 演示项目直接 CREATE TABLE，无需 alembic
-- **敏感数据处理**：所有凭据通过环境变量，绝不硬编码
-- **代码限制**：行宽 120 字符，单函数 ≤ 50 行，单文件 ≤ 500 行
-- **测试覆盖率目标**：核心逻辑 ≥ 80%
-
----
-
-## 关键文件索引
-
-| 文件 | 用途 |
-|------|------|
-| `CLAUDE.md` | Claude Code 行为指令（本机器的最高指令） |
-| `AGENTS.md` | 本文件，项目地图 |
-| `.github/agent/memory/project-memory.md` | 长期记忆：架构、约束、已知问题 |
-| `.github/agent/memory/decisions-log.md` | 中期记忆：技术决策日志 |
-| `.github/agent/memory/task-history.md` | 短期记忆：近 30 条任务记录 |
-| `.github/agent/coding-standards.md` | 编码规范 |
-| `.github/copilot-instructions.md` | Copilot 全局行为指令 |
-| `docs/superpowers/specs/` | 功能设计文档（brainstorming 输出） |
-| `docs/superpowers/plans/` | 实施计划文档（writing-plans 输出） |
+- **禁止重量级依赖** — 不引入 React/Vue 等前端框架；不使用 PostgreSQL/MySQL（SQLite 即可）
+- **敏感数据** — 单用户本地工具，无需用户认证，无需密钥管理
+- **数据库迁移** — 使用 SQLAlchemy `create_all` 自动建表，无需 Alembic
+- **代码限制** — 行宽 120 字符，单函数不超过 50 行，单文件不超过 500 行

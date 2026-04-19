@@ -1,75 +1,78 @@
-# 📏 Claude Code × Superpowers 演示仓库 — 编码规范
+# 📏 记账本 — 编码规范
 
 > 所有人类和 AI 提交的代码都应遵守本文件中的规范。
-> AI Agent 在写代码前必须阅读本文件。
 
 ---
 
 ## 1. 通用规范
 
-### 1.1 导入顺序（以 Python 为例，其他语言类似分层）
+### 1.1 导入
 
 ```python
-# 第一组：标准库
+# 标准库
 from __future__ import annotations
+
 import logging
 from datetime import datetime
 from pathlib import Path
 
-# 第二组：第三方库
+# 第三方库
 from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-# 第三组：项目内部
+# 项目内部
 from src.config import settings
-from src.models import User
 ```
 
-- 三组之间空一行
-- 禁止 `from xxx import *`
+- 导入分三组：标准库 → 第三方 → 项目内部，组间空一行
+- 禁止使用 `from xxx import *`
 - 使用绝对导入
 
 ### 1.2 命名规范
 
 | 类型 | 规范 | 示例 |
 |------|------|------|
-| 模块/包 | snake_case | `user_service.py` |
-| 类 | PascalCase | `UserService` |
-| 函数/方法 | snake_case | `get_user_by_id()` |
-| 变量 | snake_case | `user_count` |
-| 常量 | UPPER_SNAKE | `MAX_RETRY_COUNT` |
-| 私有成员 | _leading_under | `_parse_token()` |
-| API 路由 | kebab-case | `/api/user-profiles` |
-| 数据库表 | snake_case 复数 | `user_profiles` |
+| 模块/包 | snake_case | `expense_service.py` |
+| 类 | PascalCase | `ExpenseService` |
+| 函数/方法 | snake_case | `get_expenses()` |
+| 变量 | snake_case | `total_amount` |
+| 常量 | UPPER_SNAKE | `MAX_NOTE_LENGTH` |
+| 私有成员 | _leading_under | `_parse_amount()` |
+| API 路由 | kebab-case | `/api/expenses` |
+| 数据库表 | snake_case 复数 | `expenses` |
 | 环境变量 | UPPER_SNAKE | `DATABASE_URL` |
 
-### 1.3 类型注解（强制）
+### 1.3 类型注解
 
 ```python
 # ✅ 正确
-def get_users(limit: int | None = None) -> list[User]:
+def get_expenses(limit: int | None = None) -> list[Expense]:
     ...
 
 # ❌ 错误 — 缺少类型注解
-def get_users(limit=None):
+def get_expenses(limit=None):
     ...
 ```
 
-### 1.4 Docstring（Google 风格，必须）
+- 所有函数参数和返回值必须有类型注解
+- 使用 Python 3.12+ 语法：`list[int]` 而非 `List[int]`
+- 使用 `X | None` 而非 `Optional[X]`
+
+### 1.4 Docstring（Google 风格）
 
 ```python
-def process_payment(order_id: str, amount: float) -> PaymentResult:
-    """处理订单支付。
+def process_expense(expense: Expense, priority: int) -> Result:
+    """Process an expense record with given priority.
 
     Args:
-        order_id: 订单唯一标识。
-        amount: 支付金额（人民币元）。
+        expense: The expense to process.
+        priority: Processing priority (1=highest).
 
     Returns:
-        PaymentResult 对象，包含交易号和状态。
+        The processing result.
 
     Raises:
-        PaymentError: 支付失败时抛出。
-        ValueError: amount 不合法时抛出。
+        ValueError: If priority is out of range.
     """
 ```
 
@@ -78,113 +81,123 @@ def process_payment(order_id: str, amount: float) -> PaymentResult:
 ```python
 # ✅ 正确 — 具体异常 + 有意义的处理
 try:
-    result = await payment_service.charge(amount)
+    result = await service.fetch_data()
 except TimeoutError:
-    logger.warning("支付超时，订单 %s 将重试", order_id)
-    raise PaymentRetryableError(order_id)
+    logger.warning("Service timeout, will retry")
+    return []
 
-# ❌ 错误 — 裸 except（禁止！）
+# ❌ 错误 — 裸 except
 try:
-    result = await payment_service.charge(amount)
+    result = await service.fetch_data()
 except:
     pass
 ```
 
-### 1.6 日志（禁止 print）
+### 1.6 日志
 
 ```python
 import logging
 
 logger = logging.getLogger(__name__)
 
-# 正确用法
-logger.info("用户登录: user_id=%s", user.id)
-logger.error("支付失败: order_id=%s, error=%s", order_id, exc, exc_info=True)
+logger.info("Expense recorded: id=%s, amount=%s", expense.id, expense.amount)
+logger.error("Failed to save expense: %s", exc, exc_info=True)
 
-# 🚫 禁止
-logger.info("密码: %s", password)  # 禁止记录敏感信息
-print("debug:", data)              # 禁止 print
+# ⚠️ 禁止记录敏感信息
 ```
 
----
-
-## 2. 代码结构约束
-
-- 单个函数 / 方法：**≤ 50 行**（超出则拆分）
-- 单个文件：**≤ 500 行**（超出则重构模块）
-- 行宽：**≤ 120 字符**
-- 嵌套层级：**≤ 4 层**（超出则提取函数）
+- 使用 `logging` 模块，禁止 `print()`
+- 每个模块创建独立 logger
+- 日志级别：DEBUG(调试) / INFO(业务操作) / WARNING(可恢复) / ERROR(错误) / CRITICAL(致命)
 
 ---
 
-## 3. 测试规范
+## 2. Web 框架规范
 
-### 3.1 测试命名
+### 2.1 路由层
+
+```python
+router = APIRouter(prefix="/api/expenses", tags=["expenses"])
+
+@router.get("/")
+async def list_expenses(db: AsyncSession = Depends(get_db)) -> list[ExpenseResponse]:
+    """List all expenses."""
+    ...
+```
+
+- 路由函数只做：参数校验 → 调用 service → 返回响应
+- 业务逻辑放在 service 层
+- 使用依赖注入获取数据库 session
+
+---
+
+## 3. 数据库规范
+
+### 3.1 Model 定义
+
+```python
+class Expense(Base):
+    """Expense record model."""
+
+    __tablename__ = "expenses"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    amount: Mapped[float] = mapped_column(nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(200))
+    date: Mapped[date] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+```
+
+### 3.2 注意事项
+- 使用 WAL 模式提升并发读性能（SQLite）
+- 不做复杂的并发写操作（单用户工具无需担心）
+- 数据库文件定期手动备份即可
+
+---
+
+## 4. 测试规范
+
+### 4.1 测试命名
 
 ```python
 # 格式：test_<被测方法>_<场景>_<期望结果>
-def test_create_order_with_valid_input_returns_order_id():
+def test_create_expense_with_valid_input_returns_expense():
     ...
 
-def test_create_order_with_zero_amount_raises_value_error():
+def test_create_expense_with_negative_amount_raises_error():
     ...
 ```
 
-### 3.2 AAA 模式（必须）
+### 4.2 测试结构（AAA 模式）
 
 ```python
-def test_calculate_discount_vip_user_gets_20_percent():
-    # Arrange — 准备
-    user = User(level="vip")
-    original_price = 100.0
+async def test_get_daily_total_returns_correct_sum(db_session):
+    # Arrange — 准备数据
+    expenses = [
+        Expense(amount=10.0, category="餐饮", date=date(2026, 4, 19)),
+        Expense(amount=5.0, category="交通", date=date(2026, 4, 19)),
+    ]
+    db_session.add_all(expenses)
+    await db_session.flush()
 
-    # Act — 执行
-    discounted = calculate_discount(user, original_price)
+    # Act — 执行操作
+    total = await expense_service.get_daily_total(db_session, date(2026, 4, 19))
 
-    # Assert — 验证
-    assert discounted == 80.0
+    # Assert — 验证结果
+    assert total == 15.0
 ```
 
-### 3.3 测试覆盖要求
-
-- 核心业务逻辑：**≥ 90%**
-- 整体覆盖率：**≥ 80%**
-- 所有新功能必须附带测试
-- 所有 Bug 修复必须先写复现测试
+### 4.3 Mock 策略
+- 外部服务：使用 `unittest.mock.AsyncMock` 模拟
+- 时间相关：使用 `freezegun.freeze_time` 固定时间
+- 数据库：使用内存 SQLite fixture（`:memory:`）
 
 ---
 
-## 4. Git 规范
+## 5. Git 规范
 
-### 4.1 Commit Message（Conventional Commits）
-
-```
-<type>(<scope>): <description>
-
-类型：feat / fix / refactor / test / docs / chore / perf / style
-```
-
-示例：
-```
-feat(auth): 添加 JWT 登录接口
-fix(payment): 修复金额精度丢失问题
-test(user): 补充边界值测试用例
-docs(api): 更新接口文档
-```
-
-### 4.2 分支策略（GitHub Flow）
-
-- `main`：生产就绪代码，禁止直接推送
-- `feature/<name>`：新功能开发（superpowers worktree 自动创建）
-- `fix/<name>`：Bug 修复
-- PR 合并前必须通过 CI + Code Review
-
----
-
-## 5. 安全规范
-
-- **禁止**硬编码 API Key、密码、Token
-- **禁止**在日志中输出用户密码、Token 等敏感信息
-- 所有敏感配置通过环境变量（`.env` 文件）管理
-- `.env` 必须加入 `.gitignore`
-- 提供 `.env.example` 作为配置模板
+### 5.1 Commit Message
+- 遵循 Conventional Commits
+- 格式：`<type>(<scope>): <subject>`
+- 类型：`feat` / `fix` / `docs` / `style` / `refactor` / `test` / `chore`

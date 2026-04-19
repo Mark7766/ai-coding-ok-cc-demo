@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}记账本 — {{ date }}{% endblock %}
+
+{% block nav %}
+  <a href="/dashboard">📊 看板</a>
+  <a href="/stats">📅 月统计</a>
+{% endblock %}
+
+{% block content %}
+<!-- Date navigation -->
+<div class="date-nav">
+  <a class="nav-btn" href="/?date={{ prev_date }}">‹ 前一天</a>
+  <span class="date-label">
+    {{ date.strftime("%Y年%-m月%-d日") }}
+    {% if is_today %}<span class="badge">今天</span>{% endif %}
+  </span>
+  <a class="nav-btn" href="/?date={{ next_date }}">后一天 ›</a>
+</div>
+
+<!-- Daily total -->
+<div class="card">
+  <div style="display:flex; justify-content:center; gap:32px; padding:8px 0 4px">
+    <div style="text-align:center">
+      <div style="font-size:1.5rem;font-weight:700;color:#ef4444" id="daily-expense">
+        ¥{{ "%.2f" | format(total) }}
+      </div>
+      <div style="font-size:.78rem;color:var(--muted);margin-top:2px">今日支出</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:1.5rem;font-weight:700;color:#16a34a" id="daily-income">
+        ¥{{ "%.2f" | format(income) }}
+      </div>
+      <div style="font-size:.78rem;color:var(--muted);margin-top:2px">今日收入</div>
+    </div>
+  </div>
+</div>
+
+<!-- Add record form -->
+<div class="card">
+  <div class="card-title">记一笔</div>
+  <form method="post" action="/expenses/create" id="record-form">
+    <div style="margin-bottom:10px">
+      <div class="type-toggle">
+        <input type="radio" name="record_type" id="type-expense" value="支出" checked>
+        <label for="type-expense">支出</label>
+        <input type="radio" name="record_type" id="type-income" value="收入">
+        <label for="type-income">收入</label>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="form-group" style="max-width:130px">
+        <label for="amount">金额（元）</label>
+        <input
+          id="amount" name="amount" type="number"
+          step="0.01" min="0.01" placeholder="0.00"
+          required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="category">分类</label>
+        <select id="category" name="category" required>
+          {% for cat in categories %}
+          <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="expense_date">日期</label>
+        <input
+          id="expense_date" name="expense_date" type="date"
+          value="{{ date }}" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="note">备注（可选）</label>
+        <input id="note" name="note" type="text" maxlength="200" placeholder="简短说明...">
+      </div>
+      <div style="display:flex; align-items:flex-end">
+        <button type="submit" class="btn btn-primary" id="submit-btn">记一笔</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Record list -->
+<div class="card">
+  <div class="card-title">今日明细</div>
+  {% if expenses %}
+  <ul class="expense-list" id="expense-list">
+    {% for exp in expenses %}
+    {% set is_income = exp.record_type == "收入" %}
+    {% set emoji_map = {
+      "餐饮": "🍜", "交通": "🚇", "购物": "🛍️",
+      "娱乐": "🎮", "医疗": "💊", "居家": "🏠", "其他": "📦",
+      "工资": "💼", "奖金": "🎁", "副业": "💡", "投资": "📈", "其他收入": "💰"
+    } %}
+    <li class="expense-item {{ 'record-income' if is_income else 'record-expense' }}"
+        id="expense-{{ exp.id }}"
+        data-amount="{{ exp.amount }}"
+        data-type="{{ exp.record_type }}">
+      <span class="expense-emoji">{{ emoji_map.get(exp.category, "📦") }}</span>
+      <div class="expense-info">
+        <div class="expense-cat">
+          {{ exp.category }}
+          <span class="type-badge {{ 'type-badge-income' if is_income else 'type-badge-expense' }}">
+            {{ exp.record_type }}
+          </span>
+        </div>
+        {% if exp.note %}
+        <div class="expense-note">{{ exp.note }}</div>
+        {% endif %}
+      </div>
+      <span class="expense-amount">{{ '+' if is_income else '' }}¥{{ "%.2f" | format(exp.amount) }}</span>
+      <button class="expense-del" onclick="deleteExpense({{ exp.id }})" title="删除">✕</button>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="empty-state">今天还没有记录<br>在上方添加第一笔吧 ✨</div>
+  {% endif %}
+</div>
+
+<script>
+  // category lists injected from server
+  const EXPENSE_CATS = {{ categories | tojson }};
+  const INCOME_CATS  = {{ income_categories | tojson }};
+
+  // swap categories when type toggle changes
+  document.querySelectorAll('input[name="record_type"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const isIncome = radio.value === '收入';
+      const cats = isIncome ? INCOME_CATS : EXPENSE_CATS;
+      const sel = document.getElementById('category');
+      sel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    });
+  });
+
+  async function deleteExpense(id) {
+    if (!confirm('确定删除这条记录？')) return;
+    try {
+      const resp = await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+      if (!resp.ok) { alert('删除失败，请重试'); return; }
+      const row = document.getElementById(`expense-${id}`);
+      if (row) row.remove();
+      refreshTotals();
+    } catch {
+      alert('网络错误，请重试');
+    }
+  }
+
+  function refreshTotals() {
+    const rows = document.querySelectorAll('#expense-list .expense-item');
+    let expense = 0, income = 0;
+    rows.forEach(r => {
+      const amt = parseFloat(r.dataset.amount || '0');
+      if (r.dataset.type === '收入') income += amt;
+      else expense += amt;
+    });
+    document.getElementById('daily-expense').textContent = '¥' + expense.toFixed(2);
+    document.getElementById('daily-income').textContent  = '¥' + income.toFixed(2);
+    if (rows.length === 0) {
+      document.getElementById('expense-list').outerHTML =
+        '<div class="empty-state">今天还没有记录<br>在上方添加第一笔吧 ✨</div>';
+    }
+  }
+</script>
+{% endblock %}
