@@ -14,9 +14,9 @@
 | 项目类型 | 教学演示仓库 |
 | 业务场景 | 演示如何在 Claude Code 中组合使用 superpowers 5.0.7 + ai-coding-ok，提升 AI 辅助开发效率 |
 | 目标用户 | 知识星球成员，想学习 AI 辅助编程最佳实践的开发者 |
-| 当前阶段 | v0.1.0 初始化完成 |
+| 当前阶段 | v0.1.0 Todo Demo 完成 |
 | 设计原则 | 极简实用，步骤可复制，拒绝过度设计 |
-| 主语言 | Python 3.12 |
+| 主语言 | Python 3.11（宿主机实际版本） |
 | 后端框架 | FastAPI 0.115 |
 | 数据库 | SQLite（零配置，适合演示） |
 | 测试框架 | pytest 8.x |
@@ -70,8 +70,13 @@
 | `AGENTS.md` | 项目架构速查，Agent 任务开始必读 | ✅ 完成 |
 | `.github/agent/memory/` | 三层记忆系统（长期/中期/短期） | ✅ 完成 |
 | `.claude/plugins/superpowers/` | superpowers 5.0.7 技能库 | ✅ 完成 |
-| `src/` | 演示用 FastAPI 应用代码 | ⬜ 待开发 |
-| `tests/` | 演示用测试套件 | ⬜ 待开发 |
+| `src/database.py` | SQLite 连接管理与建表 | ✅ 完成 |
+| `src/models.py` | Pydantic 数据模型（Todo/TodoCreate/TodoUpdate） | ✅ 完成 |
+| `src/services.py` | 业务逻辑层（CRUD） | ✅ 完成 |
+| `src/routers/todos.py` | FastAPI 路由层 + 依赖注入 | ✅ 完成 |
+| `src/main.py` | 应用入口 + lifespan + 静态文件 | ✅ 完成 |
+| `static/index.html` | Tailwind 单页前端 | ✅ 完成 |
+| `tests/` | 22 个 pytest 测试（TDD） | ✅ 完成 |
 
 ---
 
@@ -89,6 +94,7 @@
 | 编号 | 问题 | 解决方案 | 日期 |
 |------|------|---------|------|
 | 1 | 项目初始化，无已知问题 | - | 2026-04-18 |
+| 2 | FastAPI sync 路由在线程池运行，SQLite 连接跨线程报错 | `check_same_thread=False` | 2026-04-18 |
 
 ---
 
@@ -122,6 +128,6 @@ uvicorn src.main:app --reload
 
 | 指标 | 目标 | 当前 |
 |------|------|------|
-| 测试覆盖率 | ≥80% | - |
-| 测试用例数 | - | 0 |
+| 测试覆盖率 | ≥80% | 待测量 |
+| 测试用例数 | - | 22 |
 | 线上事故 | 0 | 0 |

@@ -6,3 +6,7 @@ __pycache__/
 htmlcov/
 .coverage
 node_modules/
+*.db
+*.egg-info/
+dist/
+build/

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo Demo — Claude Code × Superpowers</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+
+  <div class="max-w-lg mx-auto pt-14 px-4 pb-16">
+
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-slate-800">📝 Todo Demo</h1>
+      <p class="text-slate-400 text-sm mt-1">Claude Code × Superpowers 演示 · FastAPI + SQLite + TDD</p>
+    </div>
+
+    <!-- Add form -->
+    <form id="add-form" class="flex gap-2 mb-6">
+      <input
+        id="title-input"
+        type="text"
+        placeholder="新增待办事项，按 Enter 添加..."
+        autocomplete="off"
+        class="flex-1 border border-slate-200 bg-white rounded-xl px-4 py-2.5 text-sm shadow-sm
+               focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+      />
+      <button
+        type="submit"
+        class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-sm font-medium
+               px-5 py-2.5 rounded-xl shadow-sm transition-all"
+      >
+        添加
+      </button>
+    </form>
+
+    <!-- Stats bar -->
+    <div id="stats-bar" class="flex gap-4 text-xs text-slate-400 mb-4 px-1 hidden">
+      <span id="stat-total"></span>
+      <span id="stat-done"></span>
+    </div>
+
+    <!-- Todo list -->
+    <ul id="todo-list" class="space-y-2"></ul>
+
+    <!-- Empty state -->
+    <div id="empty-hint" class="hidden text-center py-16">
+      <div class="text-5xl mb-3">🎉</div>
+      <p class="text-slate-400 text-sm">暂无待办事项，添加第一条吧！</p>
+    </div>
+
+  </div>
+
+  <script>
+    const API = '/api/todos';
+
+    async function req(path, options = {}) {
+      const res = await fetch(API + path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+      });
+      if (res.status === 204) return null;
+      return res.json();
+    }
+
+    const api = {
+      list:   ()           => req('/'),
+      create: (title)      => req('/', { method: 'POST', body: JSON.stringify({ title }) }),
+      update: (id, data)   => req(`/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id)         => req(`/${id}`, { method: 'DELETE' }),
+    };
+
+    function escape(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function renderTodos(todos) {
+      const list  = document.getElementById('todo-list');
+      const hint  = document.getElementById('empty-hint');
+      const stats = document.getElementById('stats-bar');
+
+      list.innerHTML = '';
+
+      if (todos.length === 0) {
+        hint.classList.remove('hidden');
+        stats.classList.add('hidden');
+        return;
+      }
+
+      hint.classList.add('hidden');
+      stats.classList.remove('hidden');
+
+      const doneCount = todos.filter(t => t.done).length;
+      document.getElementById('stat-total').textContent = `共 ${todos.length} 条`;
+      document.getElementById('stat-done').textContent  = `已完成 ${doneCount} 条`;
+
+      todos.forEach(todo => {
+        const li = document.createElement('li');
+        li.className = `flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm
+                        border border-slate-100 group transition-all`;
+        li.innerHTML = `
+          <input
+            type="checkbox"
+            ${todo.done ? 'checked' : ''}
+            data-id="${todo.id}"
+            data-done="${todo.done}"
+            class="w-4 h-4 rounded accent-blue-600 cursor-pointer flex-shrink-0"
+          />
+          <span class="flex-1 text-sm ${todo.done ? 'line-through text-slate-400' : 'text-slate-700'}">
+            ${escape(todo.title)}
+          </span>
+          <button
+            data-id="${todo.id}"
+            class="delete-btn text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100
+                   transition-all text-base leading-none"
+            title="删除"
+          >✕</button>
+        `;
+        list.appendChild(li);
+      });
+
+      list.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        cb.addEventListener('change', async () => {
+          await api.update(parseInt(cb.dataset.id), { done: cb.dataset.done !== 'true' });
+          await render();
+        });
+      });
+
+      list.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await api.delete(parseInt(btn.dataset.id));
+          await render();
+        });
+      });
+    }
+
+    async function render() {
+      const todos = await api.list();
+      renderTodos(todos);
+    }
+
+    document.getElementById('add-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('title-input');
+      const title = input.value.trim();
+      if (!title) return;
+      input.disabled = true;
+      await api.create(title);
+      input.value = '';
+      input.disabled = false;
+      input.focus();
+      await render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

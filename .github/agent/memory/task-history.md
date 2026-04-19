@@ -52,3 +52,24 @@
 - **注意事项**：
   - 项目已完全初始化，可以开始真正的功能开发
   - 下一步建议：用 `superpowers:brainstorming` 设计第一个演示功能（如 Todo API）
+
+### [TASK-003] 构建 Todo Web Demo
+- **日期**：2026-04-18
+- **类型**：feat
+- **摘要**：构建完整的 Todo List Web 应用，展示 FastAPI + SQLite + TDD 全栈开发流程
+- **变更文件**：
+  - `src/database.py`（SQLite 连接管理 + 建表）
+  - `src/models.py`（Pydantic 数据模型）
+  - `src/services.py`（业务逻辑层 CRUD）
+  - `src/routers/todos.py`（FastAPI 路由 + 依赖注入）
+  - `src/main.py`（应用入口 + lifespan）
+  - `static/index.html`（Tailwind 单页前端）
+  - `tests/conftest.py`（测试 fixtures + 依赖覆盖）
+  - `tests/test_services.py`（11 个服务层单元测试）
+  - `tests/test_api.py`（11 个 API 集成测试）
+  - `pyproject.toml`（项目依赖配置）
+- **验证结果**：22/22 测试全部通过（0.16s）
+- **注意事项**：
+  - SQLite 连接需 `check_same_thread=False`，FastAPI sync 路由在线程池中运行
+  - 实际 Python 版本为 3.11（宿主机），pyproject.toml 已调整为 `>=3.11`
+  - 依赖注入 `get_db` 在测试中通过 `app.dependency_overrides` 替换为 in-memory DB
